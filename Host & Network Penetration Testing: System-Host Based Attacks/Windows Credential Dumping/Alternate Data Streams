@@ -1,0 +1,119 @@
+Alternate Data Streams
+
+Alternate Data Streams(ADS) is a feature of the NTFS(New Technology file system) file systems that allows a file system that allows a file contain multiple streams.
+
+## ADS Concept 
+
+When you a file for example called notes.txt , when you open it you will see the notes what was written in it. As this is the main data stream 
+
+Now with ADS Concept 
+What if i tell you someone can secretly attach another hidden file  inside this file 
+Like:
+
+notes.txt:secret.exe
+
+BUT:
+
+- When you open `notes.txt` → you only see "This is my notes"
+- The **secret.exe is hidden inside it**
+- Windows Explorer **won’t show it**
+- Antivirus may **miss it**
+
+## In Hacking why this matters- 
+
+- Attackers can use ADS to hide malicious code or executable inside a legitimate file
+- They do this by placing the malicious content in the **resource stream**
+- This is commonly used to **evade basic signature-based antivirus and static scanning tools**.
+
+Syntax to perform this attack
+file.txt:hidden.exe 
+
+## Step 1: Normal file exists
+
+payload.exe
+
+👉 This is a normal executable (probably your malicious payload)
+
+---
+
+## 🟢 Step 2: ADS is created
+
+Command used:
+
+type payload.exe > windowslog.txt:winpeas.exe
+
+👉 What this means:
+
+- Take the contents of `payload.exe`
+- Hide it inside:
+    
+    windowslog.txt:winpeas.exe
+    
+
+---
+
+## 🔥 Important understanding
+
+Now you have:
+
+- `windowslog.txt` → looks like a normal small text file (15 bytes)
+- BUT secretly contains:
+    
+    winpeas.exe (hidden inside ADS)
+    
+
+👉 This is the **hidden payload**
+
+---
+
+## 🟢 Step 3: Directory listing
+
+dir
+
+Output shows:
+
+payload.exe  
+windowslog.txt
+
+👉 You DO NOT see:
+
+windowslog.txt:winpeas.exe
+
+⚠️ Because ADS is hidden from normal view
+
+---
+
+# 💣 This is the actual attack moment
+
+## 🟢 Step 4: Trying to execute ADS
+
+start windowslog.txt:winpeas.exe
+
+👉 Goal:
+
+- Run the hidden payload inside ADS
+
+---
+
+## ❌ Why it failed?
+
+Access is denied.
+
+👉 Reason:
+
+- You don’t have enough privileges
+- OR Windows blocked execution from that location
+
+---
+
+## 🟢 Step 5: Trying another method
+
+mklink wupdate.exe C:\Temp\windowslog.txt:winpeas.exe
+
+👉 What this is trying to do:
+
+- Create a shortcut (link) to the hidden ADS
+- Then execute it like a normal file
+
+---
+
