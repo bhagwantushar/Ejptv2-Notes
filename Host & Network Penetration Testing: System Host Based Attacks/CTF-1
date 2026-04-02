@@ -1,0 +1,106 @@
+
+# Host & Network Penetration Testing — System/Host Based Attacks CTF 1
+
+## Overview
+
+This CTF involved two Windows targets (`target1.ine.local` and `target2.ine.local`) and required finding four flags by exploiting weak credentials, a WebDAV misconfiguration, and open SMB shares.
+
+---
+
+## Flag 1 — Weak HTTP Basic Auth (target1.ine.local)
+
+**Objective:** User 'bob' might not have chosen a strong password.
+
+The first step was running an Nmap scan against `target1.ine.local`, which revealed port 80 running **Microsoft IIS 10.0** with HTTP Basic Authentication enabled.
+
+Hydra was used to brute-force bob's password against the HTTP GET interface using the `unix_passwords.txt` wordlist:
+
+```bash
+hydra -l bob -P /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt 10.5.22.66 http-get /
+```
+
+Hydra successfully found the password: **`password_123321`**
+
+**Flag 1:** `e4496e1bf9c04fac9e907a8da6f25410`
+
+---
+
+## Flag 2 — WebDAV Shell Upload & RCE (target1.ine.local)
+
+**Objective:** Valuable files are often on the C: drive.
+
+After discovering credentials, Gobuster was used to enumerate directories on the web server, which revealed a `/webdav/` endpoint.
+
+`cadaver` was used to connect to the WebDAV share and list its contents, where `flag1.txt` was found and read directly.
+
+A webshell (`webshell.asp`) was then uploaded to the WebDAV directory:
+
+```bash
+cadaver http://10.2.16.118/webdav/
+# Inside cadaver:
+put /usr/share/webshells/asp/webshell.asp
+```
+
+Navigating to `http://target1.ine.local/webdav/webshell.asp` in the browser provided remote command execution on the Windows server. Running `dir C:\` revealed `flag2.txt` at the root of the C: drive, and `type C:\flag2.txt` retrieved the flag.
+
+**Flag 2:** `f6a3fb5e1f71415ebd8dca79611413fc`
+
+---
+
+## Flag 3 — SMB Enumeration (target2.ine.local)
+
+**Objective:** SMB shares might contain hidden files.
+
+Nmap revealed that `target2.ine.local` had **port 445 (SMB)** open. Hydra was used to brute-force SMB credentials, discovering:
+- `administrator` / `pineapple`
+
+`smbclient` was then used to list available shares:
+
+```bash
+smbclient -L //10.2.28.194 -U administrator
+```
+
+This showed shares including `C$`, `Shared`, `Shared2`, and `Shared3`. Connecting to the `C$` share and listing its root directory revealed `flag3.txt`:
+
+```bash
+smbclient //10.3.18.178/C$ -U administrator
+smb: \> ls
+smb: \> get flag3.txt
+```
+
+**Flag 3:** `fc26f2c87bc84a4a80b4199bbc0cba6b`
+
+---
+
+## Flag 4 — SMB Desktop Enumeration (target2.ine.local)
+
+**Objective:** The Desktop directory might have what you're looking for.
+
+Still connected to the `C$` share, the Administrator's Desktop was navigated to:
+
+```bash
+smb: \> cd Users\Administrator\Desktop
+smb: \Users\Administrator\Desktop\> get flag4.txt
+```
+
+**Flag 4:** `8f6fb76e2a604fa58817f6ad0a403d70`
+
+---
+
+## Key Takeaways
+
+- **Weak passwords** on HTTP Basic Auth and SMB are easily cracked with common wordlists and tools like Hydra.
+- **WebDAV misconfigurations** on IIS can allow unauthenticated (or weakly authenticated) file uploads, leading to full remote code execution.
+- **SMB shares** on Windows servers, especially admin shares like `C$`, can expose sensitive files when default or weak credentials are in use.
+- Always enumerate thoroughly — flags and sensitive data can be on the C: drive root or in user Desktop directories.
+
+---
+
+## Tools Used
+
+- `nmap` — port scanning and service enumeration
+- `hydra` — credential brute-forcing (HTTP and SMB)
+- `gobuster` — web directory enumeration
+- `cadaver` — WebDAV client for file upload
+- `smbclient` — SMB share enumeration and file retrieval
+- `metasploit` — attempted reverse shell via `iis_webdav_upload_asp`
